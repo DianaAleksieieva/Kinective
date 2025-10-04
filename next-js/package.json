@@ -11,7 +11,12 @@
     "next": "15.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "recharts": "^3.2.1"
+    "recharts": "^3.2.1",
+
+    "@langchain/community": "^0.3.57",
+    "@langchain/google-genai": "^0.2.18",
+    "dotenv": "^16.4.5",
+    "langchain": "^0.3.35"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
