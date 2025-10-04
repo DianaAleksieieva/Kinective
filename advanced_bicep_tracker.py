@@ -32,12 +32,20 @@ class AdvancedBicepTracker:
         self.current_rep_start = None
         self.current_rep_angles = []
         
-        # Range of motion thresholds
+        # Range of motion thresholds (optimized for 90° side view)
         self.ROM_THRESHOLDS = {
-            'excellent': {'min': 30, 'max': 170},
-            'good': {'min': 40, 'max': 160},
-            'fair': {'min': 50, 'max': 150},
-            'poor': {'min': 60, 'max': 140}
+            'excellent': {'min': 35, 'max': 165},  # Near full ROM
+            'good': {'min': 45, 'max': 155},       # Good ROM
+            'fair': {'min': 55, 'max': 145},       # Acceptable ROM
+            'poor': {'min': 65, 'max': 135}        # Limited ROM
+        }
+        
+        # Optimized angle detection thresholds for side view
+        self.ANGLE_THRESHOLDS = {
+            'contracted': 50,    # Bicep fully contracted (up position)
+            'extended': 160,     # Arm nearly straight (down position)
+            'min_valid': 30,     # Minimum valid angle (filters bad detections)
+            'max_valid': 180     # Maximum valid angle
         }
         
         # Movement quality metrics
@@ -191,11 +199,16 @@ class AdvancedBicepTracker:
         self.angle_history.append(arm_angle)
         self.elbow_position_history.append([elbow[0], elbow[1]])
         
-        # Rep detection logic (improved)
+        # Rep detection logic (optimized for side view)
         feedback = []
         rep_completed = False
         
-        if arm_angle > 160:  # Extended position
+        # Filter out invalid angles
+        if arm_angle < self.ANGLE_THRESHOLDS['min_valid'] or arm_angle > self.ANGLE_THRESHOLDS['max_valid']:
+            feedback.append("⚠️  Move closer or adjust position for better detection")
+            return feedback, rep_completed
+        
+        if arm_angle > self.ANGLE_THRESHOLDS['extended']:  # Extended position (160°)
             if self.stage == "up":
                 # Rep completed - analyze the full rep
                 rep_completed = True
@@ -209,7 +222,7 @@ class AdvancedBicepTracker:
             self.current_rep_start = len(self.angle_history) - 1
             self.current_rep_angles = [arm_angle]
             
-        elif arm_angle < 50:  # Flexed position
+        elif arm_angle < self.ANGLE_THRESHOLDS['contracted']:  # Flexed position (50°)
             self.stage = "up"
             if self.current_rep_angles:
                 self.current_rep_angles.append(arm_angle)
@@ -506,6 +519,14 @@ class AdvancedBicepTracker:
             return
         
         print("Advanced Bicep Curl Tracker Started!")
+        print("")
+        print("📐 POSITIONING INSTRUCTIONS:")
+        print("  🎯 Stand sideways to the camera (90° profile view)")
+        print("  📏 Keep your working arm facing the camera")
+        print("  🚶 Stand 3-4 feet from camera for best detection")
+        print("  💡 Ensure good lighting on your side profile")
+        print("  📱 Camera should capture your full upper body")
+        print("")
         print("Controls:")
         print("  'q' - Quit")
         print("  'r' - Reset rep count")
