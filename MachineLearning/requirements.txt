@@ -1,0 +1,23 @@
+# Machine Learning Dependencies for Exercise Tracking
+# Core ML libraries
+ultralytics>=8.3.0          # YOLO pose estimation
+torch>=1.8.0               # PyTorch for deep learning
+torchvision>=0.9.0         # Computer vision utilities
+opencv-python>=4.6.0       # OpenCV for image processing
+numpy>=1.23.0              # Numerical computing
+scipy>=1.4.1               # Scientific computing
+
+# Data processing and visualization
+matplotlib>=3.3.0          # Plotting and visualization
+pandas>=1.3.0              # Data manipulation
+pillow>=7.1.2              # Image processing
+
+# Utilities
+pyyaml>=5.3.1              # Configuration files
+requests>=2.23.0           # HTTP requests
+psutil                     # System monitoring
+
+# Optional: Enhanced ML capabilities
+# scikit-learn>=1.0.0      # Traditional ML algorithms
+# jupyter>=1.0.0           # Jupyter notebooks for ML experiments
+# seaborn>=0.11.0          # Statistical visualization
