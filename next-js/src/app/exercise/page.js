@@ -1,24 +1,45 @@
+"use client";
+import Link from "next/link";
+
 export default function ExercisePage() {
   return (
-    <div className="p-6">
-      <h2 className="text-3xl font-bold text-neonPurple mb-4 text-center">Exercise Tracker</h2>
-      <p className="text-base text-neonGreen mb-6 text-center">
-        Track your workouts, count reps, and stay consistent!
-      </p>
+    <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center gap-6">
+      <h1 className="text-4xl font-extrabold text-purple-800">🏋 Exercise Tracker</h1>
+      <p className="text-gray-700">Choose a workout to get started and keep your streak alive!</p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="p-4 bg-black border border-neonPurple rounded-xl shadow-md">
-          <h3 className="text-xl font-semibold text-neonGreen mb-2">🏋️ Strength</h3>
-          <p className="text-sm">Log squats, push-ups, deadlifts and more.</p>
-        </div>
-        <div className="p-4 bg-black border border-neonGreen rounded-xl shadow-md">
-          <h3 className="text-xl font-semibold text-neonPurple mb-2">🚴 Cardio</h3>
-          <p className="text-sm">Track running, cycling, or rowing sessions.</p>
-        </div>
-        <div className="p-4 bg-black border border-neonPurple rounded-xl shadow-md">
-          <h3 className="text-xl font-semibold text-neonGreen mb-2">🧘 Flexibility</h3>
-          <p className="text-sm">Yoga, stretching, and recovery exercises.</p>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg w-full">
+        {/* Arms */}
+        <Link
+          href="/arms"
+          className="bg-purple-700 text-white font-semibold p-4 rounded-xl shadow hover:scale-105 transition"
+        >
+          💪 Arms
+          <p className="text-sm opacity-80">
+            Bicep curls, triceps, and upper body workouts.
+          </p>
+        </Link>
+
+        {/* Squats */}
+        <Link
+          href="/squats"
+          className="bg-purple-700 text-white font-semibold p-4 rounded-xl shadow hover:scale-105 transition"
+        >
+          🦵 Squats
+          <p className="text-sm opacity-80">
+            Perfect your squat form and track reps.
+          </p>
+        </Link>
+
+        {/* Push-ups */}
+        <Link
+          href="/pushups"
+          className="bg-purple-700 text-white font-semibold p-4 rounded-xl shadow hover:scale-105 transition md:col-span-2"
+        >
+          ✈ Push-ups
+          <p className="text-sm opacity-80">
+            Count your push-ups and build core strength.
+          </p>
+        </Link>
       </div>
     </div>
   );
