@@ -23,7 +23,7 @@ export default function Home() {
         </a>
 
         <a
-          href="/planning"
+          href="/workOutPlanPage"
           className="p-4 rounded-xl bg-neonGreen text-purple-900 font-bold shadow hover:scale-105 transition"
         >
           📝 Planning
@@ -50,12 +50,7 @@ export default function Home() {
         >
           🧠 Physical Therapy
         </a>
-        <a
-          href="/workOutPlanPage"
-          className="w-full px-6 py-3 rounded-xl bg-neonPurple text-white font-semibold hover:bg-neonGreen hover:text-black transition text-center"
-        >
-          workOutPlanPage
-        </a>
+       
         
       </div>
 

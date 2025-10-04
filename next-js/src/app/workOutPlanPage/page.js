@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import { doc, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
-
+import { doc, setDoc, arrayUnion } from "firebase/firestore";
 import { db } from "@/lib/firebase"; 
 
 export default function WorkOutPlanPage() {
@@ -10,30 +9,21 @@ export default function WorkOutPlanPage() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
-// 🔹 Save video to Firebase (with debug logs)
-async function saveVideoToLibrary(videoUrl) {
-  console.log("🟢 Save button clicked for:", videoUrl);
-  try {
-    const userRef = doc(db, "users", "default");
-    console.log("📌 Firestore doc reference:", userRef.path);
-
-    await setDoc(
-      userRef,
-      { library: arrayUnion(videoUrl) },
-      { merge: true } // ✅ will create if missing
-    );
-
-    console.log("✅ Successfully saved to Firestore:", videoUrl);
-    alert("✅ Video saved to library!");
-  } catch (err) {
-    console.error("❌ Error saving video:", err);
-    alert("Failed to save video.");
+  // 🔹 Save video to Firebase
+  async function saveVideoToLibrary(videoUrl) {
+    try {
+      const userRef = doc(db, "users", "default");
+      await setDoc(userRef, { library: arrayUnion(videoUrl) }, { merge: true });
+      alert("✅ Video saved to library!");
+    } catch (err) {
+      console.error("❌ Error saving video:", err);
+      alert("Failed to save video.");
+    }
   }
-}
-
 
   // 🔹 Extract YouTube ID
   function extractYouTubeId(url) {
+    if (!url || typeof url !== "string") return null;
     const patterns = [
       /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([\w-]{11})/,
       /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([\w-]{11})/,
@@ -48,23 +38,12 @@ async function saveVideoToLibrary(videoUrl) {
 
   // 🔹 Extract Vimeo ID
   function extractVimeoId(url) {
+    if (!url || typeof url !== "string") return null;
     const match = url.match(/(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(\d+)/);
     return match ? match[1] : null;
   }
 
-  // 🔹 Filter likely video links (no playlists/articles)
-  function isLikelyVideo(url) {
-    return (
-      extractYouTubeId(url) ||
-      extractVimeoId(url) ||
-      url.match(/\.(mp4|webm)$/i) ||
-      url.includes("tiktok.com/video") ||
-      url.includes("dailymotion.com/video") ||
-      url.includes("instagram.com/reel") ||
-      url.includes("facebook.com/watch")
-    );
-  }
-
+  // 🔹 Fetch exercises (single search)
   async function fetchExercises(userQuery) {
     setLoading(true);
     setResult(null);
@@ -76,14 +55,8 @@ async function saveVideoToLibrary(videoUrl) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: userQuery }),
       });
-
-      if (!res.ok) {
-        throw new Error(`Server responded with ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error(`Server responded with ${res.status}`);
       const data = await res.json();
-      console.log("📦 Raw API Response:", data);
-
       setResult(data);
     } catch (err) {
       console.error("❌ Error fetching exercises:", err);
@@ -93,7 +66,30 @@ async function saveVideoToLibrary(videoUrl) {
     setLoading(false);
   }
 
-  // 🔹 Quick Filters with more specific queries
+  // 🔹 Fetch weekly plan
+  async function fetchWeeklyPlan(userQuery) {
+    setLoading(true);
+    setResult(null);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/weeklyPlan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: userQuery }),
+      });
+      if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+      const data = await res.json();
+      setResult(data);
+    } catch (err) {
+      console.error("❌ Error fetching weekly plan:", err);
+      setError(err.message);
+    }
+
+    setLoading(false);
+  }
+
+  // 🔹 Quick Filters
   const quickFilters = [
     { label: "< 10 min", query: "quick 10 min workout exercise video" },
     { label: "10–20 min", query: "20 min workout exercise video" },
@@ -125,6 +121,12 @@ async function saveVideoToLibrary(videoUrl) {
         >
           Search
         </button>
+        <button
+          onClick={() => fetchWeeklyPlan(query)}
+          className="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700"
+        >
+          Weekly Plan
+        </button>
       </div>
 
       {/* Quick Filters */}
@@ -140,10 +142,63 @@ async function saveVideoToLibrary(videoUrl) {
         ))}
       </div>
 
-      {loading && <p className="text-gray-500">Loading exercises…</p>}
-      {error && (
-        <div className="p-3 bg-red-100 text-red-700 rounded">
-          ❌ Error: {error}
+      {loading && <p className="text-gray-500">Loading…</p>}
+      {error && <div className="p-3 bg-red-100 text-red-700 rounded">❌ {error}</div>}
+
+      {/* Results: Weekly Plan */}
+      {result && result.type === "weeklyPlan" && (
+        <div className="space-y-6">
+          {result.plan.map((day, i) => {
+            const url = typeof day.video === "string" ? day.video : null;
+            if (!url) return null;
+
+            const yt = extractYouTubeId(url);
+            const vimeo = extractVimeoId(url);
+
+            return (
+              <div key={i} className="p-4 bg-gray-100 rounded-lg shadow">
+                <h2 className="font-bold text-lg mb-2">{day.day}</h2>
+                {day.name && <h3 className="font-semibold">{day.name}</h3>}
+                {day.description && (
+                  <p className="text-sm text-gray-700 mb-2">{day.description}</p>
+                )}
+
+                <div>
+                  {yt && (
+                    <iframe
+                      className="w-full h-64 rounded-lg"
+                      src={`https://www.youtube.com/embed/${yt}`}
+                      allowFullScreen
+                    />
+                  )}
+                  {vimeo && (
+                    <iframe
+                      className="w-full h-64 rounded-lg"
+                      src={`https://player.vimeo.com/video/${vimeo}`}
+                      allowFullScreen
+                    />
+                  )}
+                  {url.match(/\.(mp4|webm)$/i) && (
+                    <video controls className="w-full h-64 rounded-lg">
+                      <source src={url} type={`video/${url.split(".").pop()}`} />
+                    </video>
+                  )}
+                  {!yt && !vimeo && !url.match(/\.(mp4|webm)$/i) && (
+                    <a href={url} target="_blank" className="text-blue-600 underline">
+                      {url}
+                    </a>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => saveVideoToLibrary(url)}
+                  className="mt-2 px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700"
+                >
+                  + Save
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -171,62 +226,35 @@ async function saveVideoToLibrary(videoUrl) {
 
               return (
                 <div key={i} className="space-y-2">
-                  {/* YouTube */}
                   {yt && (
-                    <div className="aspect-video">
-                      <iframe
-                        className="w-full h-64 rounded-lg shadow"
-                        src={`https://www.youtube.com/embed/${yt}`}
-                        title={`YouTube video ${i}`}
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      ></iframe>
-                    </div>
+                    <iframe
+                      className="w-full h-64 rounded-lg"
+                      src={`https://www.youtube.com/embed/${yt}`}
+                      allowFullScreen
+                    />
                   )}
-
-                  {/* Vimeo */}
                   {vimeo && (
-                    <div className="aspect-video">
-                      <iframe
-                        className="w-full h-64 rounded-lg shadow"
-                        src={`https://player.vimeo.com/video/${vimeo}`}
-                        title={`Vimeo video ${i}`}
-                        frameBorder="0"
-                        allow="autoplay; fullscreen; picture-in-picture"
-                        allowFullScreen
-                      ></iframe>
-                    </div>
+                    <iframe
+                      className="w-full h-64 rounded-lg"
+                      src={`https://player.vimeo.com/video/${vimeo}`}
+                      allowFullScreen
+                    />
                   )}
-
-                  {/* MP4/WebM */}
                   {url.match(/\.(mp4|webm)$/i) && (
-                    <video controls className="w-full h-64 rounded-lg shadow">
+                    <video controls className="w-full h-64 rounded-lg">
                       <source src={url} type={`video/${url.split(".").pop()}`} />
-                      Your browser does not support the video tag.
                     </video>
                   )}
-
-                  {/* Fallback link */}
                   {!yt && !vimeo && !url.match(/\.(mp4|webm)$/i) && (
-                    <div className="p-2 bg-gray-100 rounded shadow">
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline break-all"
-                      >
-                        {url}
-                      </a>
-                    </div>
+                    <a href={url} target="_blank" className="text-blue-600 underline">
+                      {url}
+                    </a>
                   )}
-
-                  {/* Save Button */}
                   <button
                     onClick={() => saveVideoToLibrary(url)}
                     className="px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700"
                   >
-                    + Save to Library
+                    + Save
                   </button>
                 </div>
               );

@@ -35,7 +35,7 @@ export default function RootLayout({ children }) {
             </Link>
 
             <Link
-              href="/planning"
+              href="/workOutPlanPage"
               className="px-3 py-1 bg-neonGreen text-purple-900 font-semibold rounded-lg hover:scale-105 transition"
             >
               📝 Planning
