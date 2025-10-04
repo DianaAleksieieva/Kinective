@@ -7,6 +7,64 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import json
 
+# Globals the original code uses (model, thresholds, EMA, etc.)
+_model = None
+_state = {"reps": 0, "phase": "top", "side": "right"}
+
+def init_model():
+    global _model
+    if _model is None:
+        # load YOLO / pose / whatever Zach uses
+        # _model = ...
+        pass
+
+def update_and_draw(frame_bgr: np.ndarray, tracker_state: dict):
+    """
+    Do what your original loop does per frame:
+    - run pose on frame_bgr
+    - draw HUD OVER the same frame (rects/text/lines)
+    - update reps/phase in tracker_state
+    Return: annotated_frame_bgr, {"reps": x, "state": "..."}
+    """
+    global _model, _state
+    init_model()
+
+    # ---- ORIGINAL LOGIC HERE ----
+    # 1) infer keypoints
+    # 2) compute angles
+    # 3) advance rep FSM
+    # 4) draw HUD on frame_bgr (in-place is fine)
+
+    # Example:
+    # cv2.putText(frame_bgr, f"Reps: {tracker_state['reps']}", (20, 40),
+    #             cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), 2)
+
+    meta = {"reps": tracker_state.get("reps", 0), "state": tracker_state.get("state", "top")}
+    return frame_bgr, meta
+
+def open_camera(preferred_width=1280, preferred_height=720, preferred_fps=30):
+    # Try the macOS AVFoundation backend first, then fall back
+    prefs = [
+        (0, cv2.CAP_AVFOUNDATION),
+        (1, cv2.CAP_AVFOUNDATION),
+        (0, cv2.CAP_ANY),
+        (1, cv2.CAP_ANY),
+    ]
+    for idx, backend in prefs:
+        cap = cv2.VideoCapture(idx, backend)
+        if cap.isOpened():
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, preferred_width)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, preferred_height)
+            cap.set(cv2.CAP_PROP_FPS, preferred_fps)
+            ok, _ = cap.read()
+            if ok:
+                print(f"✅ Camera opened (index={idx}, backend={backend})")
+                return cap
+            cap.release()
+    raise RuntimeError("❌ Could not open any camera. "
+                       "Close apps using the camera, check macOS permissions, "
+                       "and try running from macOS Terminal once to grant access.")
+
 # Import audio coach
 try:
     from simple_audio_coach import SimpleAudioCoach
@@ -625,7 +683,7 @@ class AdvancedBicepTracker:
         """Run the advanced bicep curl tracking system with crash protection"""
         cap = None
         try:
-            cap = cv2.VideoCapture(0)
+            cap = open_camera()
             
             if not cap.isOpened():
                 print("Error: Could not open webcam")

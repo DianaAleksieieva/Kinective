@@ -9,3 +9,7 @@ runs/
 *.pt
 ultralytics_src/
 .DS_Store
+.DS_Store
+.vscode/
+web/node_modules/
+web/.next/
