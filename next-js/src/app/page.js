@@ -50,6 +50,13 @@ export default function Home() {
         >
           🧠 Physical Therapy
         </a>
+        <a
+          href="/workOutPlanPage"
+          className="w-full px-6 py-3 rounded-xl bg-neonPurple text-white font-semibold hover:bg-neonGreen hover:text-black transition text-center"
+        >
+          workOutPlanPage
+        </a>
+        
       </div>
 
       {/* 📝 Footer */}
