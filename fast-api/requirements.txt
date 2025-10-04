@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+pymongo
+google-cloud-firestore
+python-dotenv
