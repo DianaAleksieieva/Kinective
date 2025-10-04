@@ -8,3 +8,4 @@ runs/
 *.engine
 *.pt
 .DS_Store
+ultralytics_src/
