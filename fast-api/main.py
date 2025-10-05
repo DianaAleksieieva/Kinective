@@ -5,6 +5,7 @@ import asyncio
 import os
 import sys
 from typing import Dict, Any
+from datetime import datetime
 
 app = FastAPI(title="Kinective AI Fitness API", version="1.0.0")
 
@@ -19,6 +20,7 @@ app.add_middleware(
 
 # Track running exercise processes
 running_processes = {}
+exercise_trackers = {}  # Store tracker instances for stats
 
 @app.get("/")
 def root():
@@ -60,24 +62,22 @@ async def start_exercise(exercise_type: str):
         if not os.path.exists(script_path):
             return {"error": f"Exercise script not found: {script_path}"}
         
-        # Start the Python tracker process
+        # Start the Python tracker process with GUI support
         process = subprocess.Popen([
             sys.executable, script_path
-        ], cwd=parent_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        ], cwd=parent_dir, 
+        creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0)
         
         running_processes[exercise_type] = process
         
         # Wait a moment to see if there are immediate errors
         import time
-        time.sleep(1)
+        time.sleep(2)  # Give more time for GUI to start
         
         if process.poll() is not None:
             # Process ended immediately - there was an error
-            stdout, stderr = process.communicate()
             return {
-                "error": f"Exercise script failed to start",
-                "stdout": stdout,
-                "stderr": stderr,
+                "error": f"Exercise script failed to start - process ended immediately",
                 "script_path": script_path
             }
         
@@ -129,21 +129,47 @@ def get_exercise_status(exercise_type: str):
     """Check if an exercise tracker is currently running"""
     
     if exercise_type not in running_processes:
-        return {"running": False, "exercise": exercise_type}
+        return {"running": False, "exercise": exercise_type, "stats": {"reps": 0}}
     
     process = running_processes[exercise_type]
     
     # Check if process is still alive
     if process.poll() is None:
+        # Try to read progress from file
+        stats = {"reps": 0}
+        try:
+            # Look for progress file in parent directory (where Python scripts run)
+            parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            progress_file = os.path.join(parent_dir, f"{exercise_type}_progress.json")
+            
+            print(f"Looking for progress file at: {progress_file}")
+            print(f"File exists: {os.path.exists(progress_file)}")
+            
+            if os.path.exists(progress_file):
+                import json
+                with open(progress_file, 'r') as f:
+                    progress_data = json.load(f)
+                    stats = {
+                        "reps": progress_data.get("rep_count", 0),
+                        "stage": progress_data.get("stage", "unknown"),
+                        "form_score": progress_data.get("form_score", 0)
+                    }
+                    print(f"Read progress data: {stats}")
+        except Exception as e:
+            print(f"Error reading progress file: {e}")
+            # If file reading fails, just return basic stats
+            stats = {"reps": 0}
+        
         return {
             "running": True,
             "exercise": exercise_type,
-            "process_id": process.pid
+            "process_id": process.pid,
+            "stats": stats
         }
     else:
         # Process has ended, remove it from tracking
         del running_processes[exercise_type]
-        return {"running": False, "exercise": exercise_type}
+        return {"running": False, "exercise": exercise_type, "stats": {"reps": 0}}
 
 @app.post("/stop-all")
 async def stop_all_exercises():
@@ -253,6 +279,65 @@ def process_exercise_frame(frame, exercise_type):
             "frame": frame,
             "stats": {"error": str(e)},
             "feedback": "Processing error"
+        }
+
+@app.post("/complete-exercise/{exercise_type}")
+async def complete_exercise(exercise_type: str):
+    """Complete exercise session and return stats"""
+    try:
+        # Stop the exercise first
+        stop_result = await stop_exercise(exercise_type)
+        
+        # Get the tracker instance if available
+        if exercise_type in exercise_trackers and exercise_trackers[exercise_type]:
+            tracker = exercise_trackers[exercise_type]
+            
+            # Get session stats
+            session_stats = {
+                "exercise_type": exercise_type,
+                "total_reps": tracker.rep_count,
+                "active_arm": getattr(tracker, 'active_arm', 'right'),
+                "completion_time": datetime.now().isoformat(),
+                "session_summary": {}
+            }
+            
+            # Get detailed stats if rep data exists
+            if hasattr(tracker, 'rep_data') and tracker.rep_data:
+                import numpy as np
+                rep_data = tracker.rep_data
+                session_stats["session_summary"] = {
+                    "avg_form_score": float(np.mean([rep.get('rom_score', 0) for rep in rep_data])),
+                    "avg_smoothness": float(np.mean([rep.get('smoothness', 0) for rep in rep_data])),
+                    "total_time": len(rep_data) * 30,  # Approximate
+                    "rep_breakdown": rep_data[-5:] if len(rep_data) > 5 else rep_data  # Last 5 reps
+                }
+            
+            # Export session data if the method exists
+            if hasattr(tracker, 'export_session_data'):
+                try:
+                    filename = tracker.export_session_data()
+                    session_stats["exported_file"] = filename
+                except Exception as e:
+                    session_stats["export_error"] = str(e)
+            
+            return {
+                "status": "completed",
+                "message": f"Great job! You completed {tracker.rep_count} {exercise_type} reps!",
+                "session_stats": session_stats,
+                "stop_result": stop_result
+            }
+        else:
+            return {
+                "status": "completed",
+                "message": f"Exercise {exercise_type} completed",
+                "session_stats": {"total_reps": 0, "exercise_type": exercise_type},
+                "stop_result": stop_result
+            }
+            
+    except Exception as e:
+        return {
+            "error": f"Failed to complete exercise: {str(e)}",
+            "status": "error"
         }
 
 if __name__ == "__main__":

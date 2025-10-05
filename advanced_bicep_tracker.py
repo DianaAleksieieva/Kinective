@@ -257,6 +257,9 @@ class AdvancedBicepTracker:
                         rep_completed = True
                         self.rep_count += 1
                         
+                        # Save progress for API communication
+                        self.save_progress()
+                        
                         # Audio feedback for rep completion
                         if self.audio_coach:
                             self.audio_coach.rep_completed(self.rep_count)
@@ -392,6 +395,21 @@ class AdvancedBicepTracker:
         # Calculate overall form score
         self.form_score = (self.movement_smoothness + self.elbow_stability_score) / 2
     
+    def save_progress(self):
+        """Save current progress to file for API communication"""
+        try:
+            progress_data = {
+                "rep_count": self.rep_count,
+                "stage": self.stage,
+                "form_score": self.form_score,
+                "timestamp": datetime.now().isoformat()
+            }
+            with open("biceps_progress.json", "w") as f:
+                json.dump(progress_data, f)
+        except Exception as e:
+            # Don't let progress saving errors crash the tracker
+            pass
+    
     def draw_advanced_pose_info(self, frame, keypoints, arm_angle):
         """Draw detailed pose information"""
         shoulder, elbow, wrist = self.get_arm_keypoints(keypoints)
@@ -492,8 +510,8 @@ class AdvancedBicepTracker:
         
         # Main info panel
         overlay = frame.copy()
-        cv2.rectangle(overlay, (10, 10), (450, 280), (0, 0, 0), -1)
-        cv2.addWeighted(overlay, 0.8, frame, 0.2, 0, frame)
+        cv2.rectangle(overlay, (10, 10), (360, 220), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.4, frame, 0.6, 0, frame)
         
         # Title
         cv2.putText(frame, 'Advanced Bicep Curl Tracker', 
@@ -753,6 +771,10 @@ class AdvancedBicepTracker:
                     except Exception as e:
                         print(f"Display error (frame {frame_count}): {e}")
                         continue
+                    
+                    # Save progress periodically (every 30 frames = ~1 second)
+                    if frame_count % 30 == 0:
+                        self.save_progress()
                     
                     # Handle key presses
                     try:

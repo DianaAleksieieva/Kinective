@@ -368,8 +368,8 @@ class AdvancedBicepTracker:
         
         # Main info panel
         overlay = frame.copy()
-        cv2.rectangle(overlay, (10, 10), (450, 280), (0, 0, 0), -1)
-        cv2.addWeighted(overlay, 0.8, frame, 0.2, 0, frame)
+        cv2.rectangle(overlay, (10, 10), (360, 220), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.4, frame, 0.6, 0, frame)
         
         # Title
         cv2.putText(frame, 'Advanced Bicep Curl Tracker', 

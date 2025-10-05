@@ -197,8 +197,8 @@ class ExerciseTracker:
         
         # Draw semi-transparent background for text
         overlay = frame.copy()
-        cv2.rectangle(overlay, (10, 10), (400, 200), (0, 0, 0), -1)
-        cv2.addWeighted(overlay, 0.7, frame, 0.3, 0, frame)
+        cv2.rectangle(overlay, (10, 10), (320, 160), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.4, frame, 0.6, 0, frame)
         
         # Rep counter
         cv2.putText(frame, f'Reps: {self.rep_count}', 

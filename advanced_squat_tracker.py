@@ -188,6 +188,9 @@ class AdvancedSquatTracker:
                         self.rep_count += 1
                         self.stage = "down"
                         
+                        # Save progress for API communication
+                        self.save_progress()
+                        
                         # Analyze the completed rep
                         rep_analysis = self.analyze_completed_squat_rep(knee_angle)
                         feedback.extend(rep_analysis)
@@ -317,8 +320,8 @@ class AdvancedSquatTracker:
             
             # Main info panel
             overlay = frame.copy()
-            cv2.rectangle(overlay, (10, 10), (400, 200), (0, 0, 0), -1)
-            cv2.addWeighted(overlay, 0.8, frame, 0.2, 0, frame)
+            cv2.rectangle(overlay, (10, 10), (320, 160), (0, 0, 0), -1)
+            cv2.addWeighted(overlay, 0.4, frame, 0.6, 0, frame)
             
             # Title
             cv2.putText(frame, 'Advanced Squat Tracker', 
@@ -350,6 +353,20 @@ class AdvancedSquatTracker:
                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
             
         except Exception:
+            pass
+    
+    def save_progress(self):
+        """Save current progress to file for API communication"""
+        try:
+            progress_data = {
+                "rep_count": self.rep_count,
+                "stage": self.stage,
+                "timestamp": datetime.now().isoformat()
+            }
+            with open("squats_progress.json", "w") as f:
+                json.dump(progress_data, f)
+        except Exception as e:
+            # Don't let progress saving errors crash the tracker
             pass
     
     def run_squat_tracking(self):
@@ -468,6 +485,10 @@ class AdvancedSquatTracker:
                         cv2.imshow('Advanced Squat Tracker', frame)
                     except Exception:
                         continue
+                    
+                    # Save progress periodically (every 30 frames = ~1 second)
+                    if frame_count % 30 == 0:
+                        self.save_progress()
                     
                     # Handle key presses
                     try:

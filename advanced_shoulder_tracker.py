@@ -122,8 +122,8 @@ class AdvancedShoulderPressTracker:
         try:
             # Main info panel
             overlay = frame.copy()
-            cv2.rectangle(overlay, (10, 10), (400, 150), (0, 0, 0), -1)
-            cv2.addWeighted(overlay, 0.8, frame, 0.2, 0, frame)
+            cv2.rectangle(overlay, (10, 10), (320, 120), (0, 0, 0), -1)
+            cv2.addWeighted(overlay, 0.4, frame, 0.6, 0, frame)
             
             cv2.putText(frame, 'Advanced Shoulder Press Tracker', 
                        (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)

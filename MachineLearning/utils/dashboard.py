@@ -77,8 +77,8 @@ class ExerciseDashboard:
         overlay = frame.copy()
         
         # Create semi-transparent background
-        cv2.rectangle(overlay, (10, 10), (400, 150), (0, 0, 0), -1)
-        cv2.addWeighted(overlay, 0.7, frame, 0.3, 0, frame)
+        cv2.rectangle(overlay, (10, 10), (320, 120), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.4, frame, 0.6, 0, frame)
         
         # Add metrics text
         metrics = [
