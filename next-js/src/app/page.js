@@ -2,56 +2,67 @@ export default function Home() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <div className="flex flex-col items-center justify-center text-center gap-6 w-full max-w-md min-h-screen pt-12 pb-8 px-6">
+    <div className="flex flex-col items-center justify-center text-center gap-8 w-full max-w-md min-h-screen pt-12 pb-8 px-6">
       {/* 🌀 Title */}
-      <h1 className="text-5xl font-extrabold text-neonGreen drop-shadow-[0_0_8px_#39FF14]">
+      <h1 className="text-6xl font-extrabold text-[#59168bb1]">
         Kinective
       </h1>
-
       {/* ✨ Subtitle */}
-      <p className="text-neonGreen/90 text-lg mb-4">
-        Your ultimate fitness hub 💪 Stay active, stay connected.
+      <p className="text-neonGreen/90 text-lg mb-6">
+        Plan smarter. Move better. Kinective helps you perfect every rep with real-time feedback.
       </p>
 
       {/* 🧭 Navigation Buttons */}
-      <div className="flex flex-col gap-4 w-full">
+      <div className="flex flex-col gap-5 w-full">
         <a
           href="/exercise"
-          className="p-4 rounded-xl bg-neonGreen text-purple-900 font-bold shadow hover:scale-105 transition"
+          className="py-5 bg-[#F4E6FF] px-4 text-xl rounded-xl bg-neonGreen text-black font-bold hover:scale-105 transition-transform shadow"
         >
           🏋 Exercise
+          <div className="text-sm font-normal text-black/80 mt-1">
+            Improve exercise technique
+          </div>
         </a>
 
         <a
           href="/workOutPlanPage"
-          className="p-4 rounded-xl bg-neonGreen text-purple-900 font-bold shadow hover:scale-105 transition"
+          className="py-5 bg-[#FFFDE6] text-xl px-4 rounded-xl bg-neonGreen text-black font-bold hover:scale-105 transition-transform shadow"
         >
           📝 Planning
+          <div className="text-sm font-normal text-black/80 mt-1">
+            Create your personalized weekly workout plan
+          </div>
         </a>
 
         <a
           href="/profile"
-          className="p-4 rounded-xl bg-neonGreen text-purple-900 font-bold shadow hover:scale-105 transition"
+          className="py-5 bg-[#E6FFF3] px-4 text-xl rounded-xl bg-neonGreen text-black font-bold hover:scale-105 transition-transform shadow"
         >
           👤 Profile
+          <div className="text-sm font-normal text-black/80 mt-1">
+            Access your saved workouts and track progress
+          </div>
         </a>
 
         <a
           href="/history"
-          className="p-4 rounded-xl bg-neonGreen text-purple-900 font-bold shadow hover:scale-105 transition"
+          className="py-5 bg-[#FFE6F7] text-xl px-4 rounded-xl bg-neonGreen text-black font-bold hover:scale-105 transition-transform shadow"
         >
-          📅 History
+          📹 History 
+          <div className="text-sm font-normal text-black/80 mt-1">
+            Review your previous sessions and achievements
+          </div>
         </a>
 
-        {/* 🆕 Physical Therapy Button */}
-        <a
+        {/* <a
           href="/physical-therapy"
-          className="p-4 rounded-xl bg-neonGreen text-purple-900 font-bold shadow hover:scale-105 transition"
+          className="py-5 px-4 text-xl rounded-xl bg-neonGreen text-black font-bold hover:scale-105 transition-transform shadow"
         >
           🧠 Physical Therapy
-        </a>
-       
-        
+          <div className="text-sm font-normal text-black/80 mt-1">
+            Restore strength and mobility through guided therapy.
+          </div>
+        </a> */}
       </div>
 
       {/* 📝 Footer */}

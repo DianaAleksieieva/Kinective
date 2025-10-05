@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { doc, setDoc, arrayUnion } from "firebase/firestore";
-import { db } from "@/lib/firebase"; 
+import { db } from "@/lib/firebase";
 
 export default function WorkOutPlanPage() {
   const [query, setQuery] = useState("");
@@ -91,15 +91,56 @@ export default function WorkOutPlanPage() {
 
   // 🔹 Quick Filters
   const quickFilters = [
+    // ⏱️ Duration filters
     { label: "< 10 min", query: "quick 10 min workout exercise video" },
     { label: "10–20 min", query: "20 min workout exercise video" },
+
+    // 💪 Muscle groups
     { label: "Arms", query: "arm exercise video" },
     { label: "Biceps", query: "bicep exercise workout video" },
     { label: "Legs", query: "leg workout exercise video" },
     { label: "Core", query: "core strengthening exercise video" },
+
+    // ☀️ Routines
     { label: "Morning", query: "morning stretch exercise video" },
     { label: "Evening Stretch", query: "evening stretching routine video" },
     { label: "Cardio", query: "cardio workout exercise video" },
+
+    // 🧠 Physical Therapy & Posture
+    { label: "Posture Fix", query: "posture correction exercise video" },
+    {
+      label: "Neck & Shoulders",
+      query: "neck and shoulder mobility posture video",
+    },
+    { label: "Back Relief", query: "lower back pain relief exercise video" },
+    {
+      label: "Spine Alignment",
+      query: "spine alignment physical therapy video",
+    },
+    {
+      label: "Desk Recovery",
+      query: "desk posture stretch and mobility video",
+    },
+    {
+      label: "Balance & Stability",
+      query: "balance and coordination physical therapy video",
+    },
+    {
+      label: "Mobility Flow",
+      query: "full body mobility physical therapy routine video",
+    },
+    {
+      label: "Shoulder Rehab",
+      query: "shoulder rehabilitation physical therapy exercise video",
+    },
+    {
+      label: "Knee Stability",
+      query: "knee strengthening and stability exercise video",
+    },
+    {
+      label: "Pain Relief",
+      query: "pain relief gentle stretching physical therapy video",
+    },
   ];
 
   return (
@@ -115,35 +156,104 @@ export default function WorkOutPlanPage() {
           onChange={(e) => setQuery(e.target.value)}
           className="flex-1 p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <button
-          onClick={() => fetchExercises(query)}
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-        >
-          Search
-        </button>
-        <button
-          onClick={() => fetchWeeklyPlan(query)}
-          className="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700"
-        >
-          Weekly Plan
-        </button>
+       <button
+  onClick={() => fetchExercises(query)}
+  className="bg-[#32D198] hover:bg-[#28B886] px-4 py-2 rounded-lg text-white transition-colors duration-200"
+>
+  Search
+</button>
+
+<button
+  onClick={() => fetchWeeklyPlan(query)}
+  className="bg-[#E86BC6] hover:bg-[#D259B1] px-4 py-2 rounded-lg text-white transition-colors duration-200"
+>
+  Weekly Plan
+</button>
       </div>
 
-      {/* Quick Filters */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {quickFilters.map((filter) => (
-          <button
-            key={filter.label}
-            onClick={() => fetchExercises(filter.query)}
-            className="px-4 py-2 rounded-full bg-gray-200 text-sm hover:bg-gray-300"
-          >
-            {filter.label}
-          </button>
-        ))}
+      {/* Quick Filters - Grouped by Category */}
+      <div className="space-y-6 mb-6">
+        {/* ⏱️ Duration */}
+        <div className="p-4 rounded-xl bg-[#E6F3FF]">
+          {" "}
+          {/* Sky Frost */}
+          <h3 className="font-semibold text-gray-800 mb-2">⏱ Duration</h3>
+          <div className="flex flex-wrap gap-2">
+            {quickFilters.slice(0, 2).map((filter) => (
+              <button
+                key={filter.label}
+                onClick={() => fetchExercises(filter.query)}
+                className="px-4 py-2 rounded-full bg-white text-sm hover:bg-blue-100 transition"
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 💪 Muscle Groups */}
+        <div className="p-4 rounded-xl bg-[#E6FFF3]">
+          {" "}
+          {/* Mint Whisper */}
+          <h3 className="font-semibold text-gray-800 mb-2">💪 Muscle Groups</h3>
+          <div className="flex flex-wrap gap-2">
+            {quickFilters.slice(2, 6).map((filter) => (
+              <button
+                key={filter.label}
+                onClick={() => fetchExercises(filter.query)}
+                className="px-4 py-2 rounded-full bg-white text-sm hover:bg-green-100 transition"
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ☀️ Daily Routines */}
+        <div className="p-4 rounded-xl bg-[#FFFDE6]">
+          {" "}
+          {/* Lemon Veil */}
+          <h3 className="font-semibold text-gray-800 mb-2">
+            ☀️ Daily Routines
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {quickFilters.slice(6, 9).map((filter) => (
+              <button
+                key={filter.label}
+                onClick={() => fetchExercises(filter.query)}
+                className="px-4 py-2 rounded-full bg-white text-sm hover:bg-yellow-100 transition"
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 🧠 Posture & Therapy */}
+        <div className="p-4 rounded-xl bg-[#F4E6FF]">
+          {" "}
+          {/* Lavender Mist */}
+          <h3 className="font-semibold text-gray-800 mb-2">
+            🧠 Posture & Therapy
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {quickFilters.slice(9).map((filter) => (
+              <button
+                key={filter.label}
+                onClick={() => fetchExercises(filter.query)}
+                className="px-4 py-2 rounded-full bg-white text-sm hover:bg-purple-100 transition"
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {loading && <p className="text-gray-500">Loading…</p>}
-      {error && <div className="p-3 bg-red-100 text-red-700 rounded">❌ {error}</div>}
+      {error && (
+        <div className="p-3 bg-red-100 text-red-700 rounded">❌ {error}</div>
+      )}
 
       {/* Results: Weekly Plan */}
       {result && result.type === "weeklyPlan" && (
@@ -160,7 +270,9 @@ export default function WorkOutPlanPage() {
                 <h2 className="font-bold text-lg mb-2">{day.day}</h2>
                 {day.name && <h3 className="font-semibold">{day.name}</h3>}
                 {day.description && (
-                  <p className="text-sm text-gray-700 mb-2">{day.description}</p>
+                  <p className="text-sm text-gray-700 mb-2">
+                    {day.description}
+                  </p>
                 )}
 
                 <div>
@@ -180,11 +292,18 @@ export default function WorkOutPlanPage() {
                   )}
                   {url.match(/\.(mp4|webm)$/i) && (
                     <video controls className="w-full h-64 rounded-lg">
-                      <source src={url} type={`video/${url.split(".").pop()}`} />
+                      <source
+                        src={url}
+                        type={`video/${url.split(".").pop()}`}
+                      />
                     </video>
                   )}
                   {!yt && !vimeo && !url.match(/\.(mp4|webm)$/i) && (
-                    <a href={url} target="_blank" className="text-blue-600 underline">
+                    <a
+                      href={url}
+                      target="_blank"
+                      className="text-blue-600 underline"
+                    >
                       {url}
                     </a>
                   )}
@@ -242,11 +361,18 @@ export default function WorkOutPlanPage() {
                   )}
                   {url.match(/\.(mp4|webm)$/i) && (
                     <video controls className="w-full h-64 rounded-lg">
-                      <source src={url} type={`video/${url.split(".").pop()}`} />
+                      <source
+                        src={url}
+                        type={`video/${url.split(".").pop()}`}
+                      />
                     </video>
                   )}
                   {!yt && !vimeo && !url.match(/\.(mp4|webm)$/i) && (
-                    <a href={url} target="_blank" className="text-blue-600 underline">
+                    <a
+                      href={url}
+                      target="_blank"
+                      className="text-blue-600 underline"
+                    >
                       {url}
                     </a>
                   )}

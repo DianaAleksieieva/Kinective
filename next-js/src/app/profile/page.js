@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase"; // make sure this is your firebase config
+import { db } from "@/lib/firebase";
 import {
   BarChart,
   Bar,
@@ -16,25 +16,65 @@ export default function ProfilePage() {
   const [showVideo, setShowVideo] = useState(false);
   const [library, setLibrary] = useState([]);
   const [lastVideo, setLastVideo] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // 🔹 Helper to normalize YouTube/Vimeo/embed links
+  function getEmbedUrl(url) {
+    if (!url) return "";
+    if (url.includes("youtube.com/watch?v="))
+      return url.replace("watch?v=", "embed/");
+    if (url.includes("youtube.com/shorts/"))
+      return url.replace("shorts/", "embed/");
+    if (url.includes("youtu.be/"))
+      return url.replace("youtu.be/", "www.youtube.com/embed/");
+    if (url.includes("vimeo.com/"))
+      return url.replace("vimeo.com/", "player.vimeo.com/video/");
+    return url;
+  }
+
+  // 🔹 Fetch Firestore data
   useEffect(() => {
     async function fetchLibrary() {
       try {
-        // 🔹 Replace "default" with the real userId if you have authentication
         const userRef = doc(db, "users", "default");
         const snap = await getDoc(userRef);
 
         if (snap.exists()) {
           const data = snap.data();
-          if (data.library && Array.isArray(data.library)) {
-            setLibrary(data.library);
-            setLastVideo(data.library[data.library.length - 1] || null);
+          console.log("📚 Raw Firestore data:", data);
+
+          let parsedLibrary = [];
+
+          // Handle both stringified & array forms
+          if (Array.isArray(data.library)) {
+            parsedLibrary = data.library;
+          } else if (typeof data.library === "string") {
+            try {
+              parsedLibrary = JSON.parse(data.library);
+            } catch (err) {
+              console.warn("⚠️ Could not parse library string:", err);
+            }
           }
+
+          // Filter only valid URLs
+          const validVideos = parsedLibrary.filter(
+            (url) => typeof url === "string" && url.includes("http")
+          );
+
+          console.log("✅ Final filtered library:", validVideos);
+
+          setLibrary(validVideos);
+          setLastVideo(validVideos[validVideos.length - 1] || null);
+        } else {
+          console.warn("⚠️ No Firestore document found for 'default'");
         }
       } catch (err) {
         console.error("❌ Error fetching library:", err);
+      } finally {
+        setLoading(false);
       }
     }
+
     fetchLibrary();
   }, []);
 
@@ -53,7 +93,6 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col items-center justify-start w-full max-w-2xl mx-auto p-4">
-      {/* 🧍 Profile Header */}
       <h1 className="text-3xl font-extrabold text-black mb-6 flex items-center gap-2">
         <span className="text-green-400 text-4xl">👤</span> Your Profile
       </h1>
@@ -66,7 +105,6 @@ export default function ProfilePage() {
           <p className="text-black/60 text-xs">Joined: Jan 2025</p>
         </div>
 
-        {/* 📚 Library Button */}
         <Link
           href="/library"
           className="flex items-center justify-center w-16 h-16 bg-purple-900 rounded-xl shadow-lg hover:scale-110 transition relative group"
@@ -78,7 +116,7 @@ export default function ProfilePage() {
         </Link>
 
         {/* ▶ Play Button */}
-        {lastVideo && (
+        {!loading && lastVideo && (
           <button
             onClick={handleOpenVideo}
             className="flex items-center justify-center w-16 h-16 bg-purple-900 rounded-xl shadow-lg hover:scale-110 transition relative group"
@@ -91,16 +129,27 @@ export default function ProfilePage() {
         )}
       </div>
 
+      {/* Show message if empty */}
+      {!loading && !lastVideo && (
+        <p className="text-gray-600 mb-4">
+          ⚠️ You haven’t saved any videos yet.
+        </p>
+      )}
+
       {/* 🔥 Streak */}
       <div className="bg-purple-800/40 p-5 rounded-xl shadow-lg w-full mb-6 text-center">
-        <h3 className="text-xl font-semibold text-black mb-2">🔥 Workout Streak</h3>
+        <h3 className="text-xl font-semibold text-black mb-2">
+          🔥 Workout Streak
+        </h3>
         <p className="text-3xl font-extrabold text-black">{streak} days</p>
         <p className="text-black/70 text-sm">Keep it going! 💪</p>
       </div>
 
       {/* 📊 Chart */}
       <div className="bg-purple-800/40 p-5 rounded-xl shadow-lg w-full mb-6">
-        <h3 className="text-xl font-bold text-black mb-4">📊 Monthly Workout Activity</h3>
+        <h3 className="text-xl font-bold text-black mb-4">
+          📊 Monthly Workout Activity
+        </h3>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={monthlyData}>
@@ -110,20 +159,6 @@ export default function ProfilePage() {
               <Bar dataKey="workouts" fill="#39FF14" />
             </BarChart>
           </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* 🏆 Stats */}
-      <div className="bg-purple-800/40 p-5 rounded-xl shadow-lg w-full flex justify-around text-center">
-        <div>
-          <h4 className="font-bold text-black">💪 Total Workouts</h4>
-          <p className="text-2xl font-extrabold text-black">{totalWorkouts}</p>
-          <p className="text-black/70 text-sm">This month</p>
-        </div>
-        <div>
-          <h4 className="font-bold text-black">🏅 Personal Best</h4>
-          <p className="text-2xl font-extrabold text-black">{personalBest} days</p>
-          <p className="text-black/70 text-sm">Longest streak</p>
         </div>
       </div>
 
@@ -141,7 +176,7 @@ export default function ProfilePage() {
             <iframe
               width="100%"
               height="100%"
-              src={lastVideo.replace("watch?v=", "embed/")} // 🔹 auto convert YouTube
+              src={getEmbedUrl(lastVideo)}
               title="Profile Video"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
