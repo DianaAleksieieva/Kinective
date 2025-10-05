@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
+/* 🎨 Base light theme colors */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
+/* 🧠 Tailwind custom theme variables */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -12,15 +14,22 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* 🧍 Body styling */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* 🔗 Link reset */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 💫 Smooth transitions for UI changes */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
