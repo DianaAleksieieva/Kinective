@@ -1,46 +1,24 @@
-# VitaBuddy
+🧠 Kinective
 
-## 🏗️ Project Structure
+Kinective is an AI-powered fitness assistant that uses YOLO pose estimation and computer vision to track your form, count reps, and provide real-time feedback through a live camera feed. It helps users exercise confidently and safely without needing a personal trainer.
 
-```
-Kinective/
-├── fast-api/                       # 🚀 Backend API
-├── next-js/                        # 🌐 Frontend Web Application  
-├── MachineLearning/                 # 🤖 AI & ML Module
-│   ├── models/
-│   │   ├── advanced_bicep_tracker.py  # Advanced exercise analysis
-│   │   └── exercise_tracker.py        # Basic tracking
-│   ├── tests/
-│   │   ├── test_torch.py              # PyTorch tests
-│   │   └── test_yolo.py               # YOLO tests
-│   ├── utils/                         # ML utility functions
-│   ├── requirements.txt               # ML dependencies
-│   ├── README.md                      # ML documentation
-│   └── __init__.py                    # Python module setup
-├── advanced_bicep_tracker.py          # 🏋️ Main Exercise Tracker
-└── README.md                          # This file
-```
+🚀 Setup
+# Clone the repository
+git clone https://github.com/<your-username>/Kinective.git
+cd Kinective
 
-## 🚀 Quick Start
+# Install dependencies
+pip install -r machine-learning/requirements.txt
+pip install -r flask-backend/requirements.txt
 
-### Machine Learning Module
-```bash
-# Install ML dependencies
-cd MachineLearning
-pip install -r requirements.txt
+# Test YOLO and OpenCV setup
+python machine-learning/tests/test_yolo.py
+python machine-learning/tests/test_cv.py
 
-# Test ML setup
-python tests/test_torch.py
-python tests/test_yolo.py
+# Run the Flask server
+cd flask-backend
+python app.py
 
-# Run exercise tracker
-python ../advanced_bicep_tracker.py
-```
 
-## 🤖 ML Features
-
-- **Real-time Pose Detection** using YOLO11-pose
-- **Advanced Exercise Analysis** for bicep curls
-- **Range of Motion** tracking and scoring
-- **Form Quality Assessment** with real-time feedback
-- **Session Data Export** for analytics
+Visit http://127.0.0.1:5000/
+ in your browser to start your AI workout session.
