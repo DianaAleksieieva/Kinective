@@ -1,14 +1,47 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { BarChart, Bar, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase"; // make sure this is your firebase config
+import {
+  BarChart,
+  Bar,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+} from "recharts";
 
 export default function ProfilePage() {
   const [showVideo, setShowVideo] = useState(false);
+  const [library, setLibrary] = useState([]);
+  const [lastVideo, setLastVideo] = useState(null);
+
+  useEffect(() => {
+    async function fetchLibrary() {
+      try {
+        // 🔹 Replace "default" with the real userId if you have authentication
+        const userRef = doc(db, "users", "default");
+        const snap = await getDoc(userRef);
+
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.library && Array.isArray(data.library)) {
+            setLibrary(data.library);
+            setLastVideo(data.library[data.library.length - 1] || null);
+          }
+        }
+      } catch (err) {
+        console.error("❌ Error fetching library:", err);
+      }
+    }
+    fetchLibrary();
+  }, []);
+
   const handleOpenVideo = () => setShowVideo(true);
   const handleCloseVideo = () => setShowVideo(false);
 
-  // Example data for chart
+  // Example chart data
   const monthlyData = Array.from({ length: 30 }, (_, i) => ({
     day: i + 1,
     workouts: Math.random() > 0.7 ? 1 : 0,
@@ -27,60 +60,45 @@ export default function ProfilePage() {
 
       {/* 📝 User Info Card */}
       <div className="relative bg-purple-800/40 p-5 rounded-xl shadow-lg w-full mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* 👤 User Info */}
         <div className="flex-1 text-center sm:text-left">
           <h2 className="text-2xl font-bold text-black">Hasan Uddin</h2>
           <p className="text-black/80 text-sm">Fitness Enthusiast 🏋</p>
           <p className="text-black/60 text-xs">Joined: Jan 2025</p>
         </div>
 
-        {/* 📚 Styled Video Library Button with Library Icon */}
+        {/* 📚 Library Button */}
         <Link
           href="/library"
-          className="order-1 sm:order-1 flex items-center justify-center w-16 h-16 bg-purple-900 rounded-xl shadow-lg hover:scale-110 transition relative group"
+          className="flex items-center justify-center w-16 h-16 bg-purple-900 rounded-xl shadow-lg hover:scale-110 transition relative group"
           aria-label="Go to Video Library"
         >
           <div className="w-10 h-10 bg-green-400 rounded-full flex items-center justify-center group-hover:scale-110 transition">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="white"
-              viewBox="0 0 24 24"
-              width="26"
-              height="26"
-            >
-              <path d="M4 22h2V2H4v20zm14-20v20h2V2h-2zM9 22h6V2H9v20z" />
-            </svg>
+            📚
           </div>
         </Link>
 
-        {/* ▶ Red Play Button */}
-        <button
-          onClick={handleOpenVideo}
-          className="order-2 sm:order-2 flex items-center justify-center w-16 h-16 bg-purple-900 rounded-xl shadow-lg hover:scale-110 transition relative group"
-          aria-label="Play Video"
-        >
-          <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center group-hover:scale-110 transition">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="white"
-              viewBox="0 0 24 24"
-              width="26"
-              height="26"
-            >
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
-        </button>
+        {/* ▶ Play Button */}
+        {lastVideo && (
+          <button
+            onClick={handleOpenVideo}
+            className="flex items-center justify-center w-16 h-16 bg-purple-900 rounded-xl shadow-lg hover:scale-110 transition relative group"
+            aria-label="Play Profile Video"
+          >
+            <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center group-hover:scale-110 transition">
+              ▶
+            </div>
+          </button>
+        )}
       </div>
 
-      {/* 🔥 Streak Section */}
+      {/* 🔥 Streak */}
       <div className="bg-purple-800/40 p-5 rounded-xl shadow-lg w-full mb-6 text-center">
         <h3 className="text-xl font-semibold text-black mb-2">🔥 Workout Streak</h3>
         <p className="text-3xl font-extrabold text-black">{streak} days</p>
         <p className="text-black/70 text-sm">Keep it going! 💪</p>
       </div>
 
-      {/* 📊 Monthly Activity Graph */}
+      {/* 📊 Chart */}
       <div className="bg-purple-800/40 p-5 rounded-xl shadow-lg w-full mb-6">
         <h3 className="text-xl font-bold text-black mb-4">📊 Monthly Workout Activity</h3>
         <div className="h-64 w-full">
@@ -95,7 +113,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 🏆 Stats Section */}
+      {/* 🏆 Stats */}
       <div className="bg-purple-800/40 p-5 rounded-xl shadow-lg w-full flex justify-around text-center">
         <div>
           <h4 className="font-bold text-black">💪 Total Workouts</h4>
@@ -110,7 +128,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 🎬 Video Popup */}
-      {showVideo && (
+      {showVideo && lastVideo && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50">
           <div className="relative bg-white rounded-lg overflow-hidden shadow-2xl max-w-3xl w-full aspect-video">
             <button
@@ -123,7 +141,7 @@ export default function ProfilePage() {
             <iframe
               width="100%"
               height="100%"
-              src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"
+              src={lastVideo.replace("watch?v=", "embed/")} // 🔹 auto convert YouTube
               title="Profile Video"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

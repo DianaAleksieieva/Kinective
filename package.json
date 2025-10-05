@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "firebase": "^12.3.0"
+    "firebase": "^12.3.0",
+    "recharts": "^3.2.1"
   }
 }
