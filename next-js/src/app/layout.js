@@ -4,6 +4,9 @@ import Link from "next/link";
 export const metadata = {
   title: "Kinective Fitness App",
   description: "Your purple & neon green fitness companion 💪",
+  icons: {
+    icon: "/logo-k.png",
+  },
 };
 
 export default function RootLayout({ children }) {
@@ -46,6 +49,12 @@ export default function RootLayout({ children }) {
               className="px-3 py-1 bg-neonGreen text-purple-900 font-semibold rounded-lg hover:scale-105 transition  text-white"
             >
               👤 Profile
+            </Link>
+            <Link
+              href="/library"
+              className="px-3 py-1 bg-neonGreen text-purple-900 font-semibold rounded-lg hover:scale-105 transition  text-white"
+            >
+              🎥 Library
             </Link>
 
             {/* <Link

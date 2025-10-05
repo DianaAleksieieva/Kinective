@@ -8,6 +8,38 @@ export default function WorkOutPlanPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  // 🔹 Save Weekly Plan
+  async function saveWeeklyPlanToLibrary(plan) {
+    if (!plan || !Array.isArray(plan) || plan.length === 0) {
+      alert("No weekly plan to save.");
+      return;
+    }
+
+    try {
+      const userRef = doc(db, "users", "default");
+      const planData = {
+        name: query || "Unnamed Plan",
+        createdAt: new Date().toISOString(),
+        days: plan.map((d) => ({
+          day: d.day,
+          name: d.name || "",
+          description: d.description || "",
+          video: d.video || "",
+        })),
+      };
+
+      await setDoc(
+        userRef,
+        { weeklyPlans: arrayUnion(planData) },
+        { merge: true }
+      );
+
+      alert("✅ Weekly plan saved successfully!");
+    } catch (err) {
+      console.error("❌ Error saving weekly plan:", err);
+      alert("Failed to save weekly plan.");
+    }
+  }
 
   // 🔹 Save video to Firebase
   async function saveVideoToLibrary(videoUrl) {
@@ -156,19 +188,19 @@ export default function WorkOutPlanPage() {
           onChange={(e) => setQuery(e.target.value)}
           className="flex-1 p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-       <button
-  onClick={() => fetchExercises(query)}
-  className="bg-[#32D198] hover:bg-[#28B886] px-4 py-2 rounded-lg text-white transition-colors duration-200"
->
-  Search
-</button>
+        <button
+          onClick={() => fetchExercises(query)}
+          className="bg-[#32D198] hover:bg-[#28B886] px-4 py-2 rounded-lg text-white transition-colors duration-200"
+        >
+          Search
+        </button>
 
-<button
-  onClick={() => fetchWeeklyPlan(query)}
-  className="bg-[#E86BC6] hover:bg-[#D259B1] px-4 py-2 rounded-lg text-white transition-colors duration-200"
->
-  Weekly Plan
-</button>
+        <button
+          onClick={() => fetchWeeklyPlan(query)}
+          className="bg-[#E86BC6] hover:bg-[#D259B1] px-4 py-2 rounded-lg text-white transition-colors duration-200"
+        >
+          Weekly Plan
+        </button>
       </div>
 
       {/* Quick Filters - Grouped by Category */}
@@ -255,71 +287,68 @@ export default function WorkOutPlanPage() {
         <div className="p-3 bg-red-100 text-red-700 rounded">❌ {error}</div>
       )}
 
-      {/* Results: Weekly Plan */}
       {result && result.type === "weeklyPlan" && (
-        <div className="space-y-6">
-          {result.plan.map((day, i) => {
-            const url = typeof day.video === "string" ? day.video : null;
-            if (!url) return null;
+  <div className="space-y-6">
+    {/* 🔹 One main Save button */}
+    <button
+      onClick={() => saveWeeklyPlanToLibrary(result.plan)}
+      className="w-full bg-[#7B61FF] hover:bg-[#6B50E0] text-white font-semibold py-2 rounded-lg transition-colors duration-200"
+    >
+      💾 Save Weekly Plan
+    </button>
 
-            const yt = extractYouTubeId(url);
-            const vimeo = extractVimeoId(url);
+    {/* 🔹 Render each day */}
+    {result.plan.map((day, i) => {
+      const url = typeof day.video === "string" ? day.video : null;
+      if (!url) return null;
 
-            return (
-              <div key={i} className="p-4 bg-gray-100 rounded-lg shadow">
-                <h2 className="font-bold text-lg mb-2">{day.day}</h2>
-                {day.name && <h3 className="font-semibold">{day.name}</h3>}
-                {day.description && (
-                  <p className="text-sm text-gray-700 mb-2">
-                    {day.description}
-                  </p>
-                )}
+      const yt = extractYouTubeId(url);
+      const vimeo = extractVimeoId(url);
 
-                <div>
-                  {yt && (
-                    <iframe
-                      className="w-full h-64 rounded-lg"
-                      src={`https://www.youtube.com/embed/${yt}`}
-                      allowFullScreen
-                    />
-                  )}
-                  {vimeo && (
-                    <iframe
-                      className="w-full h-64 rounded-lg"
-                      src={`https://player.vimeo.com/video/${vimeo}`}
-                      allowFullScreen
-                    />
-                  )}
-                  {url.match(/\.(mp4|webm)$/i) && (
-                    <video controls className="w-full h-64 rounded-lg">
-                      <source
-                        src={url}
-                        type={`video/${url.split(".").pop()}`}
-                      />
-                    </video>
-                  )}
-                  {!yt && !vimeo && !url.match(/\.(mp4|webm)$/i) && (
-                    <a
-                      href={url}
-                      target="_blank"
-                      className="text-blue-600 underline"
-                    >
-                      {url}
-                    </a>
-                  )}
-                </div>
+      return (
+        <div key={i} className="p-4 bg-gray-100 rounded-lg shadow">
+          <h2 className="font-bold text-lg mb-2">{day.day}</h2>
+          {day.name && <h3 className="font-semibold">{day.name}</h3>}
+          {day.description && (
+            <p className="text-sm text-gray-700 mb-2">{day.description}</p>
+          )}
 
-                <button
-                  onClick={() => saveVideoToLibrary(url)}
-                  className="mt-2 px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700"
-                >
-                  + Save
-                </button>
-              </div>
-            );
-          })}
+          <div>
+            {yt && (
+              <iframe
+                className="w-full h-64 rounded-lg"
+                src={`https://www.youtube.com/embed/${yt}`}
+                allowFullScreen
+              />
+            )}
+            {vimeo && (
+              <iframe
+                className="w-full h-64 rounded-lg"
+                src={`https://player.vimeo.com/video/${vimeo}`}
+                allowFullScreen
+              />
+            )}
+            {url.match(/\.(mp4|webm)$/i) && (
+              <video controls className="w-full h-64 rounded-lg">
+                <source src={url} type={`video/${url.split(".").pop()}`} />
+              </video>
+            )}
+            {!yt && !vimeo && !url.match(/\.(mp4|webm)$/i) && (
+              <a
+                href={url}
+                target="_blank"
+                className="text-blue-600 underline"
+              >
+                {url}
+              </a>
+            )}
+          </div>
         </div>
-      )}
+      );
+    })}
+  </div>
+)}
+
 
       {/* Results: Plan */}
       {result && result.type === "plan" && (

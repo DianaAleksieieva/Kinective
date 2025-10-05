@@ -93,25 +93,22 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col items-center justify-start w-full max-w-2xl mx-auto p-4">
-      <h1 className="text-3xl font-extrabold text-black mb-6 flex items-center gap-2">
-        <span className="text-green-400 text-4xl">👤</span> Your Profile
-      </h1>
+
 
       {/* 📝 User Info Card */}
-      <div className="relative bg-purple-800/40 p-5 rounded-xl shadow-lg w-full mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="relative p-5 rounded-xl shadow-lg w-full mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex-1 text-center sm:text-left">
           <h2 className="text-2xl font-bold text-black">Hasan Uddin</h2>
-          <p className="text-black/80 text-sm">Fitness Enthusiast 🏋</p>
-          <p className="text-black/60 text-xs">Joined: Jan 2025</p>
+          <p className="text-black/60 text-s">Joined: Jan 2025</p>
         </div>
 
         <Link
           href="/library"
-          className="flex items-center justify-center w-16 h-16 bg-purple-900 rounded-xl shadow-lg hover:scale-110 transition relative group"
+          className="flex items-center justify-center w-16 h-16 rounded-xl hover:scale-110 transition relative group"
           aria-label="Go to Video Library"
         >
-          <div className="w-10 h-10 bg-green-400 rounded-full flex items-center justify-center group-hover:scale-110 transition">
-            📚
+          <div className="w-13 h-13 bg-green-400 rounded-full flex items-center justify-center group-hover:scale-110 transition">
+            🎥
           </div>
         </Link>
 
@@ -119,25 +116,18 @@ export default function ProfilePage() {
         {!loading && lastVideo && (
           <button
             onClick={handleOpenVideo}
-            className="flex items-center justify-center w-16 h-16 bg-purple-900 rounded-xl shadow-lg hover:scale-110 transition relative group"
+            className="flex items-center justify-center w-16 h-16  rounded-xl  hover:scale-110 transition relative group"
             aria-label="Play Profile Video"
           >
-            <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center group-hover:scale-110 transition">
+            <div className="w-13 h-13 bg-red-600 rounded-full flex items-center justify-center group-hover:scale-110 transition">
               ▶
             </div>
           </button>
         )}
       </div>
 
-      {/* Show message if empty */}
-      {!loading && !lastVideo && (
-        <p className="text-gray-600 mb-4">
-          ⚠️ You haven’t saved any videos yet.
-        </p>
-      )}
-
       {/* 🔥 Streak */}
-      <div className="bg-purple-800/40 p-5 rounded-xl shadow-lg w-full mb-6 text-center">
+      <div className=" p-5 rounded-xl shadow-lg w-full mb-6 text-center">
         <h3 className="text-xl font-semibold text-black mb-2">
           🔥 Workout Streak
         </h3>
@@ -146,7 +136,7 @@ export default function ProfilePage() {
       </div>
 
       {/* 📊 Chart */}
-      <div className="bg-purple-800/40 p-5 rounded-xl shadow-lg w-full mb-6">
+      <div className=" p-5 rounded-xl shadow-lg w-full mb-6">
         <h3 className="text-xl font-bold text-black mb-4">
           📊 Monthly Workout Activity
         </h3>

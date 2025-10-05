@@ -1,0 +1,20 @@
+{
+  "name": "Kinective Fitness App",
+  "short_name": "Kinective",
+  "icons": [
+    {
+      "src": "/logo-k.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo-k.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#6B21A8",
+  "background_color": "#000000"
+}

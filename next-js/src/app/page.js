@@ -45,12 +45,12 @@ export default function Home() {
         </a>
 
         <a
-          href="/history"
+          href="/library"
           className="py-5 bg-[#FFE6F7] text-xl px-4 rounded-xl bg-neonGreen text-black font-bold hover:scale-105 transition-transform shadow"
         >
-          📹 History 
+          📹 Video Library 
           <div className="text-sm font-normal text-black/80 mt-1">
-            Review your previous sessions and achievements
+            Review your saved video and weekly plan
           </div>
         </a>
 

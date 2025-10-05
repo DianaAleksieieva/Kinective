@@ -134,78 +134,114 @@ function isValidVideoUrl(url) {
   return patterns.some((p) => p.test(url));
 }
 
+async function isPlayableYouTubeUrl(url) {
+  if (!/youtu(\.be|be\.com)/.test(url)) return true; // not YouTube → skip check
+  try {
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    const res = await fetch(oembedUrl, { method: "GET" });
+    return res.ok; // 404 => removed/private
+  } catch {
+    return false;
+  }
+}
+
 // 🔹 Weekly plan
 export async function getWeeklyPlan(userQuery) {
   const normalized = normalizeQuery(userQuery);
   console.log("🟢 Running getWeeklyPlan for:", normalized);
+
+  // ✅ Helper: verify YouTube link is actually playable
+  async function isPlayableYouTubeUrl(url) {
+    if (!/youtu(\.be|be\.com)/i.test(url)) return true; // not a YouTube link → assume OK
+    try {
+      const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+      const res = await fetch(oembedUrl, { method: "GET" });
+      if (!res.ok) {
+        console.log(`🚫 Unavailable YouTube video: ${url}`);
+      }
+      return res.ok; // 404 or 410 = private/deleted
+    } catch (err) {
+      console.warn("⚠️ oEmbed check failed for:", url, err.message);
+      return false;
+    }
+  }
 
   try {
     // STEP 1: Fetch from Tavily
     const videos = await tavilySearch(normalized);
     console.log("🎥 Tavily returned:", videos.length, "videos");
 
-    // Filter only valid playable links
+    // STEP 2: Filter only valid-looking links
     const validVideos = videos.filter(isValidVideoUrl);
-    console.log("✅ Valid videos after filter:", validVideos.length);
+    console.log("✅ Rough valid videos:", validVideos.length);
 
-    // Shuffle
-    const shuffled = validVideos.sort(() => 0.5 - Math.random());
+    // STEP 3: Verify YouTube videos are actually playable
+    const playable = [];
+    for (const v of validVideos) {
+      if (await isPlayableYouTubeUrl(v)) {
+        playable.push(v);
+      } else {
+        console.log("🚫 Skipped unavailable video:", v);
+      }
+    }
+    console.log("🎬 Playable after oEmbed check:", playable.length);
 
-    // ✅ Build only as many days as we actually have
-    const weeklyPlan = shuffled.slice(0, 7).map((video, i) => ({
+    // STEP 4: Shuffle and limit to available days
+    const shuffled = playable.sort(() => 0.5 - Math.random());
+    const limitedVideos = shuffled.slice(0, Math.min(7, shuffled.length));
+
+    // STEP 5: Build weekly plan (can be <7)
+    const weeklyPlan = limitedVideos.map((video, i) => ({
       day: `Day ${i + 1}`,
       video,
       name: "Suggested workout",
       description: `Exercise video for ${normalized}`,
     }));
 
-    // STEP 2: If fewer than 7 → fallback to Gemini
-    if (weeklyPlan.length < 7) {
-      console.log("⚠️ Not enough videos, calling Gemini fallback…");
-      const result = await model.invoke(`
+    // ✅ If any valid video found → return plan as-is
+    if (weeklyPlan.length > 0) {
+      console.log(`✅ Returning ${weeklyPlan.length}-day plan from Tavily.`);
+      return { type: "weeklyPlan", plan: weeklyPlan };
+    }
+
+    // ⚠️ If no valid videos, fallback to Gemini
+    console.log("⚠️ No valid videos found, calling Gemini fallback…");
+    const result = await model.invoke(`
 You are a strict JSON generator acting as a fitness video assistant.
 
 TASK:
 - Treat the user query "${normalized}" as fitness-related (workout, stretch, rehab, training).
-- Generate a **7-day workout plan**.
-- Each day must contain exactly 1 unique exercise video.
-- Tailor the selection to match the query (e.g. if the user says "15 min full body", find 15 min full body videos).
-- Respond ONLY as a valid JSON array of 7 objects in this exact format:
+- Generate a 7-day workout plan ONLY if you can find **real video links**.
+- Each day must contain 1 valid exercise video.
+
+FORMAT:
 [
   { "day": "Day 1", "video": "valid playable url", "name": "string", "description": "short tip" },
   ...
-  { "day": "Day 7", "video": "valid playable url", "name": "string", "description": "short tip" }
 ]
 
 RULES:
 - "video" must be a real, playable link (YouTube, Vimeo, TikTok, Dailymotion, Instagram reels, or .mp4/.webm).
-- Each of the 7 videos must be unique (no repeats).
-- Do NOT return articles, blogs, PDFs, or fake YouTube IDs.
-- No extra text, no markdown, only the JSON array.
+- Only include days for which valid videos exist (may be <7).
+- Do NOT make up or fake URLs.
+- No markdown, no explanations — only JSON.
 `);
 
-      let text = typeof result.content === "string" ? result.content.trim() : "";
-      console.log("📦 Raw Gemini output:", text);
-
-      if (text.startsWith("```")) {
-        text = text.replace(/```json|```/g, "").trim();
-      }
-
-      let parsed = [];
-      try {
-        parsed = JSON.parse(text);
-        parsed = parsed.filter((d) => d && isValidVideoUrl(d.video));
-        console.log("✅ Parsed Gemini weekly plan:", parsed);
-        return { type: "weeklyPlan", plan: parsed };
-      } catch (err) {
-        console.warn("⚠️ Gemini JSON parse failed:", err.message);
-        return { type: "weeklyPlan", plan: weeklyPlan };
-      }
+    let text = typeof result.content === "string" ? result.content.trim() : "";
+    if (text.startsWith("```")) {
+      text = text.replace(/```json|```/g, "").trim();
     }
 
-    // Default return (valid Tavily normalized plan)
-    console.log("✅ Returning Tavily weeklyPlan:", weeklyPlan);
-    return { type: "weeklyPlan", plan: weeklyPlan };
+    let parsed = [];
+    try {
+      parsed = JSON.parse(text);
+      parsed = parsed.filter((d) => d && isValidVideoUrl(d.video));
+      console.log("✅ Parsed Gemini weekly plan:", parsed);
+      return { type: "weeklyPlan", plan: parsed };
+    } catch (err) {
+      console.warn("⚠️ Gemini JSON parse failed:", err.message);
+      return { type: "weeklyPlan", plan: [] };
+    }
   } catch (err) {
     console.error("❌ getWeeklyPlan failed:", err);
     return { type: "error", error: err.message || "Unknown error" };
