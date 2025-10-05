@@ -7,6 +7,14 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import json
 
+# Import audio coach
+try:
+    from simple_audio_coach import SimpleAudioCoach
+    AUDIO_AVAILABLE = True
+except ImportError:
+    AUDIO_AVAILABLE = False
+    print("⚠️ Audio coach not available - continuing with visual feedback only")
+
 class AdvancedBicepTracker:
     def __init__(self, model_path="yolo11n-pose.pt"):
         """Initialize the advanced bicep curl tracker"""
@@ -32,12 +40,20 @@ class AdvancedBicepTracker:
         self.current_rep_start = None
         self.current_rep_angles = []
         
-        # Range of motion thresholds
+        # Range of motion thresholds (optimized for 90° side view)
         self.ROM_THRESHOLDS = {
-            'excellent': {'min': 30, 'max': 170},
-            'good': {'min': 40, 'max': 160},
-            'fair': {'min': 50, 'max': 150},
-            'poor': {'min': 60, 'max': 140}
+            'excellent': {'min': 35, 'max': 165},  # Near full ROM
+            'good': {'min': 45, 'max': 155},       # Good ROM
+            'fair': {'min': 55, 'max': 145},       # Acceptable ROM
+            'poor': {'min': 65, 'max': 135}        # Limited ROM
+        }
+        
+        # Optimized angle detection thresholds for side view
+        self.ANGLE_THRESHOLDS = {
+            'contracted': 50,    # Bicep fully contracted (up position)
+            'extended': 160,     # Arm nearly straight (down position)
+            'min_valid': 30,     # Minimum valid angle (filters bad detections)
+            'max_valid': 180     # Maximum valid angle
         }
         
         # Movement quality metrics
@@ -48,6 +64,15 @@ class AdvancedBicepTracker:
         # Feedback system
         self.feedback_messages = []
         self.form_score = 0
+        
+        # Initialize audio coach
+        self.audio_coach = None
+        if AUDIO_AVAILABLE:
+            try:
+                self.audio_coach = SimpleAudioCoach()
+                print("🎵 Audio coach enabled!")
+            except Exception as e:
+                print(f"⚠️ Audio coach init failed: {e}")
         
     def calculate_angle(self, point1, point2, point3):
         """Calculate angle between three points with error handling"""
@@ -176,56 +201,111 @@ class AdvancedBicepTracker:
         return "irregular", 0
     
     def analyze_bicep_curl_advanced(self, keypoints):
-        """Advanced bicep curl analysis with detailed metrics"""
-        shoulder, elbow, wrist = self.get_arm_keypoints(keypoints)
-        
-        if shoulder is None:
-            return None, ["❌ Cannot detect arm keypoints clearly"]
-        
-        # Calculate arm angle
-        arm_angle = self.calculate_angle(shoulder, elbow, wrist)
-        if arm_angle is None:
-            return None, ["❌ Cannot calculate arm angle"]
-        
-        # Store angle and elbow position
-        self.angle_history.append(arm_angle)
-        self.elbow_position_history.append([elbow[0], elbow[1]])
-        
-        # Rep detection logic (improved)
-        feedback = []
-        rep_completed = False
-        
-        if arm_angle > 160:  # Extended position
-            if self.stage == "up":
-                # Rep completed - analyze the full rep
-                rep_completed = True
-                self.rep_count += 1
-                
-                # Analyze the completed rep
-                rep_analysis = self.analyze_completed_rep()
-                feedback.extend(rep_analysis)
-                
-            self.stage = "down"
-            self.current_rep_start = len(self.angle_history) - 1
-            self.current_rep_angles = [arm_angle]
+        """Advanced bicep curl analysis with detailed metrics and error handling"""
+        try:
+            # Validate input keypoints
+            if keypoints is None or len(keypoints) < 17:
+                return None, ["❌ Incomplete pose data"]
             
-        elif arm_angle < 50:  # Flexed position
-            self.stage = "up"
-            if self.current_rep_angles:
-                self.current_rep_angles.append(arm_angle)
-        else:
-            # Middle range
-            if self.current_rep_angles:
-                self.current_rep_angles.append(arm_angle)
-        
-        # Real-time form feedback
-        form_feedback = self.provide_realtime_feedback(arm_angle, elbow)
-        feedback.extend(form_feedback)
-        
-        # Calculate current metrics
-        self.update_movement_metrics()
-        
-        return arm_angle, feedback
+            # Get arm keypoints with error handling
+            try:
+                shoulder, elbow, wrist = self.get_arm_keypoints(keypoints)
+            except Exception as e:
+                return None, ["❌ Error accessing keypoints"]
+            
+            if shoulder is None:
+                return None, ["❌ Cannot detect arm keypoints clearly"]
+            
+            # Calculate arm angle with validation
+            try:
+                arm_angle = self.calculate_angle(shoulder, elbow, wrist)
+            except Exception as e:
+                return None, ["❌ Angle calculation error"]
+            
+            if arm_angle is None:
+                return None, ["❌ Cannot calculate arm angle"]
+            
+            # Validate angle is reasonable
+            if not (0 <= arm_angle <= 180):
+                return None, ["⚠️ Invalid angle detected"]
+            
+            # Store angle and elbow position with error handling
+            try:
+                self.angle_history.append(arm_angle)
+                
+                # Validate elbow coordinates before storing
+                elbow_x, elbow_y = float(elbow[0]), float(elbow[1])
+                if np.isfinite(elbow_x) and np.isfinite(elbow_y):
+                    self.elbow_position_history.append([elbow_x, elbow_y])
+            except Exception as e:
+                # Continue even if history storage fails
+                pass
+            
+            # Rep detection logic (optimized for side view)
+            feedback = []
+            rep_completed = False
+            
+            # Filter out invalid angles
+            if arm_angle < self.ANGLE_THRESHOLDS['min_valid'] or arm_angle > self.ANGLE_THRESHOLDS['max_valid']:
+                feedback.append("⚠️  Move closer or adjust position for better detection")
+                return arm_angle, feedback
+            
+            try:
+                if arm_angle > self.ANGLE_THRESHOLDS['extended']:  # Extended position (160°)
+                    if self.stage == "up":
+                        # Rep completed - analyze the full rep
+                        rep_completed = True
+                        self.rep_count += 1
+                        
+                        # Audio feedback for rep completion
+                        if self.audio_coach:
+                            self.audio_coach.rep_completed(self.rep_count)
+                        
+                        # Analyze the completed rep with error handling
+                        try:
+                            rep_analysis = self.analyze_completed_rep()
+                            if rep_analysis:
+                                feedback.extend(rep_analysis)
+                        except Exception as e:
+                            feedback.append("✅ Rep completed (analysis error)")
+                            
+                    self.stage = "down"
+                    self.current_rep_start = len(self.angle_history) - 1
+                    self.current_rep_angles = [arm_angle]
+                    
+                elif arm_angle < self.ANGLE_THRESHOLDS['contracted']:  # Flexed position (50°)
+                    self.stage = "up"
+                    if self.current_rep_angles:
+                        self.current_rep_angles.append(arm_angle)
+                else:
+                    # Middle range
+                    if self.current_rep_angles:
+                        self.current_rep_angles.append(arm_angle)
+                
+                # Real-time form feedback with error handling
+                try:
+                    form_feedback = self.provide_realtime_feedback(arm_angle, elbow)
+                    if form_feedback:
+                        feedback.extend(form_feedback)
+                except Exception as e:
+                    # Continue without form feedback if there's an error
+                    pass
+                
+                # Calculate current metrics with error handling
+                try:
+                    self.update_movement_metrics()
+                except Exception as e:
+                    # Continue without metrics update if there's an error
+                    pass
+                
+            except Exception as e:
+                feedback.append("⚠️ Processing error - continuing tracking")
+            
+            return arm_angle, feedback
+            
+        except Exception as e:
+            # Top-level error handling
+            return None, ["❌ Tracking error - please reposition"]
     
     def analyze_completed_rep(self):
         """Analyze a completed repetition for detailed feedback"""
@@ -338,28 +418,72 @@ class AdvancedBicepTracker:
             self.draw_angle_arc(frame, shoulder, elbow, wrist, arm_angle)
     
     def draw_angle_arc(self, frame, shoulder, elbow, wrist, angle):
-        """Draw an arc showing the current angle"""
+        """Draw an arc showing the current angle with comprehensive error handling"""
         try:
-            # Calculate arc parameters
-            center = (int(elbow[0]), int(elbow[1]))
+            # Validate inputs
+            if not all(isinstance(p, (list, tuple, np.ndarray)) and len(p) >= 2 for p in [shoulder, elbow, wrist]):
+                return
             
-            # Calculate vectors
-            vec1 = np.array([shoulder[0] - elbow[0], shoulder[1] - elbow[1]])
-            vec2 = np.array([wrist[0] - elbow[0], wrist[1] - elbow[1]])
+            if not isinstance(angle, (int, float)) or not np.isfinite(angle):
+                return
+            
+            # Validate frame
+            if frame is None or frame.size == 0:
+                return
+            
+            height, width = frame.shape[:2]
+            
+            # Validate coordinates are within frame bounds
+            elbow_x, elbow_y = int(elbow[0]), int(elbow[1])
+            if not (0 <= elbow_x < width and 0 <= elbow_y < height):
+                return
+            
+            shoulder_x, shoulder_y = int(shoulder[0]), int(shoulder[1])
+            wrist_x, wrist_y = int(wrist[0]), int(wrist[1])
+            
+            # Calculate arc parameters
+            center = (elbow_x, elbow_y)
+            
+            # Calculate vectors with validation
+            vec1 = np.array([shoulder_x - elbow_x, shoulder_y - elbow_y], dtype=float)
+            vec2 = np.array([wrist_x - elbow_x, wrist_y - elbow_y], dtype=float)
+            
+            # Check for zero-length vectors
+            if np.linalg.norm(vec1) < 1e-6 or np.linalg.norm(vec2) < 1e-6:
+                return
             
             # Calculate start and end angles for arc
             start_angle = math.degrees(math.atan2(vec1[1], vec1[0]))
             end_angle = math.degrees(math.atan2(vec2[1], vec2[0]))
             
-            # Draw arc
-            cv2.ellipse(frame, center, (30, 30), 0, start_angle, end_angle, (255, 255, 0), 2)
+            # Validate angles
+            if not all(np.isfinite(a) for a in [start_angle, end_angle]):
+                return
             
-            # Draw angle text
-            text_x = center[0] + 40
-            text_y = center[1] - 20
-            cv2.putText(frame, f'{angle:.1f}°', (text_x, text_y),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-        except:
+            # Ensure proper arc direction
+            if abs(end_angle - start_angle) > 180:
+                if end_angle > start_angle:
+                    start_angle += 360
+                else:
+                    end_angle += 360
+            
+            # Draw arc with bounds checking
+            arc_radius = min(30, width // 20, height // 20)  # Adaptive radius
+            try:
+                cv2.ellipse(frame, center, (arc_radius, arc_radius), 0, start_angle, end_angle, (255, 255, 0), 2)
+            except Exception:
+                # Fallback: draw a simple circle
+                cv2.circle(frame, center, arc_radius, (255, 255, 0), 2)
+            
+            # Draw angle text with bounds checking
+            text_x = max(0, min(width - 80, center[0] + 40))
+            text_y = max(30, min(height - 10, center[1] - 20))
+            
+            if 0 <= text_x < width - 80 and 30 <= text_y < height - 10:
+                cv2.putText(frame, f'{angle:.1f}°', (text_x, text_y),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        except Exception as e:
+            # Silent fail for drawing operations to prevent crashes
             pass
     
     def draw_advanced_ui(self, frame, arm_angle):
@@ -498,76 +622,225 @@ class AdvancedBicepTracker:
         print("="*50 + "\n")
     
     def run_advanced_tracking(self):
-        """Run the advanced bicep curl tracking system"""
-        cap = cv2.VideoCapture(0)
-        
-        if not cap.isOpened():
-            print("Error: Could not open webcam")
-            return
-        
-        print("Advanced Bicep Curl Tracker Started!")
-        print("Controls:")
-        print("  'q' - Quit")
-        print("  'r' - Reset rep count")
-        print("  's' - Switch arm (left/right)")
-        print("  'a' - Show analytics")
-        print("  'e' - Export session data")
-        
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
+        """Run the advanced bicep curl tracking system with crash protection"""
+        cap = None
+        try:
+            cap = cv2.VideoCapture(0)
             
-            frame = cv2.flip(frame, 1)
-            height, width = frame.shape[:2]
+            if not cap.isOpened():
+                print("Error: Could not open webcam")
+                return
             
-            # Run pose estimation
-            results = self.model(frame, conf=0.5, verbose=False)
+            # Set camera properties for stability
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            cap.set(cv2.CAP_PROP_FPS, 30)
             
-            if results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
-                keypoints = results[0].keypoints.data[0].cpu().numpy()
+            print("Advanced Bicep Curl Tracker Started!")
+            print("")
+            print("📐 POSITIONING INSTRUCTIONS:")
+            print("  🎯 Stand sideways to the camera (90° profile view)")
+            print("  📏 Keep your working arm facing the camera")
+            print("  🚶 Stand 3-4 feet from camera for best detection")
+            print("  💡 Ensure good lighting on your side profile")
+            print("  📱 Camera should capture your full upper body")
+            print("")
+            print("Controls:")
+            print("  'q' - Quit")
+            print("  'r' - Reset rep count")
+            print("  's' - Switch arm (left/right)")
+            print("  'a' - Show analytics")
+            print("  'e' - Export session data")
+            print("  'm' - Toggle audio on/off")
+            
+            # Audio session start
+            if self.audio_coach:
+                self.audio_coach.session_started("bicep curls")
+            
+            frame_count = 0
+            error_count = 0
+            max_errors = 100  # Allow up to 100 errors before stopping
+            
+            while True:
+                try:
+                    ret, frame = cap.read()
+                    if not ret:
+                        print("Warning: Failed to read frame from camera")
+                        error_count += 1
+                        if error_count > max_errors:
+                            print("Too many camera errors, stopping...")
+                            break
+                        continue
+                    
+                    frame_count += 1
+                    error_count = 0  # Reset error count on successful frame
+                    
+                    # Validate frame
+                    if frame is None or frame.size == 0:
+                        continue
+                    
+                    try:
+                        frame = cv2.flip(frame, 1)
+                        height, width = frame.shape[:2]
+                    except Exception as e:
+                        print(f"Frame processing error: {e}")
+                        continue
+                    
+                    # Run pose estimation with error handling
+                    try:
+                        results = self.model(frame, conf=0.5, verbose=False)
+                        
+                        if (results and len(results) > 0 and 
+                            results[0].keypoints is not None and 
+                            len(results[0].keypoints.data) > 0):
+                            
+                            keypoints = results[0].keypoints.data[0].cpu().numpy()
+                            
+                            # Validate keypoints array
+                            if keypoints is None or keypoints.size == 0 or len(keypoints) < 17:
+                                self.feedback_messages = ["⚠️ Incomplete pose detection"]
+                                arm_angle = None
+                            else:
+                                # Advanced bicep curl analysis with error handling
+                                try:
+                                    result = self.analyze_bicep_curl_advanced(keypoints)
+                                    if result and len(result) == 2:
+                                        arm_angle, feedback = result
+                                        if feedback and isinstance(feedback, list):
+                                            self.feedback_messages = feedback[-3:]  # Keep last 3 messages
+                                        else:
+                                            self.feedback_messages = ["✅ Tracking active"]
+                                    else:
+                                        arm_angle = None
+                                        self.feedback_messages = ["⚠️ Analysis returned invalid data"]
+                                except Exception as e:
+                                    print(f"Analysis error (frame {frame_count}): {e}")
+                                    self.feedback_messages = ["⚠️ Analysis error - continuing..."]
+                                    arm_angle = None
+                                
+                                # Draw advanced pose information with error handling
+                                try:
+                                    self.draw_advanced_pose_info(frame, keypoints, arm_angle)
+                                except Exception as e:
+                                    print(f"Drawing error (frame {frame_count}): {e}")
+                                    # Continue without drawing pose info
+                        else:
+                            self.feedback_messages = ["❌ No person detected"]
+                            arm_angle = None
+                    
+                    except Exception as e:
+                        print(f"YOLO inference error (frame {frame_count}): {e}")
+                        self.feedback_messages = ["⚠️ Detection error - repositioning may help"]
+                        arm_angle = None
+                    
+                    # Draw UI with error handling
+                    try:
+                        self.draw_advanced_ui(frame, arm_angle)
+                    except Exception as e:
+                        print(f"UI drawing error (frame {frame_count}): {e}")
+                        # Draw minimal fallback UI
+                        try:
+                            cv2.putText(frame, f'Reps: {self.rep_count}', (20, 30), 
+                                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                            cv2.putText(frame, 'UI Error - Tracking Active', (20, 60), 
+                                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+                        except:
+                            pass
+                    
+                    # Display frame with error handling
+                    try:
+                        cv2.imshow('Advanced Bicep Curl Tracker', frame)
+                    except Exception as e:
+                        print(f"Display error (frame {frame_count}): {e}")
+                        continue
+                    
+                    # Handle key presses
+                    try:
+                        key = cv2.waitKey(1) & 0xFF
+                        if key == ord('q'):
+                            break
+                        elif key == ord('r'):
+                            self.rep_count = 0
+                            self.rep_data = []
+                            self.angle_history.clear()
+                            self.elbow_position_history.clear()
+                            print("Session reset!")
+                        elif key == ord('s'):
+                            self.active_arm = "left" if self.active_arm == "right" else "right"
+                            print(f"Switched to {self.active_arm} arm")
+                        elif key == ord('a'):
+                            try:
+                                self.show_analytics()
+                            except Exception as e:
+                                print(f"Analytics error: {e}")
+                        elif key == ord('e'):
+                            try:
+                                self.export_session_data()
+                            except Exception as e:
+                                print(f"Export error: {e}")
+                        elif key == ord('m'):
+                            # Toggle audio
+                            if self.audio_coach:
+                                self.audio_coach = None
+                                print("🔇 Audio muted")
+                            elif AUDIO_AVAILABLE:
+                                try:
+                                    self.audio_coach = SimpleAudioCoach()
+                                    print("🔊 Audio enabled")
+                                except Exception as e:
+                                    print(f"Audio enable error: {e}")
+                            else:
+                                print("⚠️ Audio not available")
+                    except Exception as e:
+                        print(f"Key handling error: {e}")
+                        # Continue without key handling
+                    
+                    # Memory management - clear old data periodically
+                    if frame_count % 1000 == 0:
+                        print(f"Processed {frame_count} frames successfully")
+                        # Keep only recent data to prevent memory buildup
+                        if len(self.angle_history) > 200:
+                            # Keep only last 100 entries
+                            self.angle_history = deque(list(self.angle_history)[-100:], maxlen=100)
+                        if len(self.elbow_position_history) > 100:
+                            # Keep only last 50 entries
+                            self.elbow_position_history = deque(list(self.elbow_position_history)[-50:], maxlen=50)
                 
-                # Advanced bicep curl analysis
-                arm_angle, feedback = self.analyze_bicep_curl_advanced(keypoints)
-                
-                # Draw advanced pose information
-                self.draw_advanced_pose_info(frame, keypoints, arm_angle)
-                
-                self.feedback_messages = feedback[-3:]  # Keep last 3 messages
-            else:
-                self.feedback_messages = ["❌ No person detected"]
-                arm_angle = None
-            
-            # Draw advanced UI
-            self.draw_advanced_ui(frame, arm_angle)
-            
-            cv2.imshow('Advanced Bicep Curl Tracker', frame)
-            
-            # Handle key presses
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                break
-            elif key == ord('r'):
-                self.rep_count = 0
-                self.rep_data = []
-                self.angle_history.clear()
-                self.elbow_position_history.clear()
-                print("Session reset!")
-            elif key == ord('s'):
-                self.active_arm = "left" if self.active_arm == "right" else "right"
-                print(f"Switched to {self.active_arm} arm")
-            elif key == ord('a'):
-                self.show_analytics()
-            elif key == ord('e'):
-                self.export_session_data()
+                except KeyboardInterrupt:
+                    print("\nStopping tracker...")
+                    break
+                except Exception as e:
+                    error_count += 1
+                    print(f"Unexpected error in main loop (frame {frame_count}): {e}")
+                    if error_count > max_errors:
+                        print("Too many errors, stopping for safety...")
+                        break
+                    continue
         
-        cap.release()
-        cv2.destroyAllWindows()
+        except Exception as e:
+            print(f"Fatal error in tracking system: {e}")
         
-        # Final analytics
-        if self.rep_data:
-            print("\nSession completed!")
-            self.show_analytics()
+        finally:
+            # Cleanup
+            try:
+                if cap is not None:
+                    cap.release()
+                cv2.destroyAllWindows()
+                print("Camera and windows closed successfully")
+            except Exception as e:
+                print(f"Cleanup error: {e}")
+            
+            # Final analytics
+            try:
+                if self.rep_data:
+                    print("\nSession completed!")
+                    self.show_analytics()
+                    
+                    # Audio session end
+                    if self.audio_coach:
+                        self.audio_coach.session_ended(self.rep_count, "bicep curls")
+            except Exception as e:
+                print(f"Final analytics error: {e}")
 
 if __name__ == "__main__":
     tracker = AdvancedBicepTracker()
